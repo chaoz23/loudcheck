@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "loudcheck"
+version = "0.1.0"
+description = "Loudness compliance verdicts against formal published standards (EBU R128, ATSC A/85) — a pass/fail answer with exact deltas, not raw meter output."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "chaoz23", email = "chaoz23@gmail.com" }]
+keywords = ["loudness", "ebu-r128", "atsc-a85", "lufs", "true-peak", "ffmpeg", "compliance", "mcp", "agents", "broadcast"]
+dependencies = []
+
+[project.optional-dependencies]
+mcp = ["mcp==1.28.1"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+loudcheck = "loudcheck.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/chaoz23/loudcheck"
+Issues = "https://github.com/chaoz23/loudcheck/issues"
+
+[tool.setuptools.packages.find]
+include = ["loudcheck*"]
+
+[tool.pytest.ini_options]
+addopts = "-v"

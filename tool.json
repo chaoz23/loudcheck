@@ -1,0 +1,35 @@
+{
+  "name": "loudcheck",
+  "description": "Loudness compliance verdict against formal published standards (EBU R128, ATSC A/85). Measures integrated loudness, loudness range, and true peak via ffmpeg, returns pass/fail with per-metric deltas and exact remediation — a compliance answer, not raw meter output.",
+  "usage": "loudcheck <file> [--standard EBU_R128|ATSC_A85] [--json]",
+  "requires": "ffmpeg >= 5.0 on PATH",
+  "exit_codes": {
+    "0": "pass — file complies with the standard",
+    "1": "fail — non-compliant; remediation included in output",
+    "2": "error — missing file, no audio stream, ffmpeg absent, unknown standard"
+  },
+  "output": {
+    "json_flag": "--json emits the full verdict object on stdout",
+    "shape": {
+      "verdict": "pass | fail",
+      "standard": "standard id",
+      "metrics": "integrated {measured,target,tolerance,delta,pass,citation}, true_peak {measured,max,delta,pass,citation}, lra {measured,informational}",
+      "failures": "plain-English causes, one per failed metric",
+      "remediation": "exact corrections, e.g. 'apply -2.3 LU gain ... loudnorm I=-23'",
+      "measurement_context": "ffmpeg_version, sample_rate, channels, duration_seconds, gating_threshold"
+    },
+    "errors": "Error:-prefixed text on stderr, never a traceback"
+  },
+  "mcp": {
+    "server": "python -m loudcheck.mcp_server",
+    "transport": "stdio",
+    "tools": [
+      "check_loudness(path, standard='EBU_R128') -> verdict dict (identical to CLI --json)",
+      "list_standards() -> catalog with targets, tolerances, citations"
+    ]
+  },
+  "scope": {
+    "in": "formal, stable standards only (EBU R128, ATSC A/85; PRs adding formal standards welcome as pure data)",
+    "out": "per-platform delivery templates (Netflix/DPP/...), loudness correction, full-file QC, real-time monitoring"
+  }
+}

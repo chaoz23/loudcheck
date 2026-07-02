@@ -23,6 +23,7 @@ import json
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -261,3 +262,20 @@ def test_standards_catalog_is_pure_data():
         for metric in std["metrics"].values():
             assert "citation" in metric
             assert not callable(metric.get("target"))
+
+
+def test_schema_flag(capsys):
+    """--schema prints the packaged tool definition and exits 0, no files needed."""
+    rc = cli_main(["--schema"])
+    assert rc == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["name"] == "loudcheck"
+    assert "exit_codes" in data and "mcp" in data
+
+
+def test_schema_matches_repo_root():
+    """Guardrail: loudcheck/tool.json (shipped in the package) and the
+    repo-root tool.json (for agents browsing GitHub) must not drift."""
+    from loudcheck.cli import tool_schema
+    root = Path(__file__).resolve().parent.parent / "tool.json"
+    assert json.loads(tool_schema()) == json.loads(root.read_text())

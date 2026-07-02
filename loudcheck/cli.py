@@ -9,6 +9,7 @@ standards like BS_1770), 1 = fail — in batch mode, any fail,
 from __future__ import annotations
 
 import argparse
+import importlib.resources
 import json
 import sys
 from pathlib import Path
@@ -19,6 +20,13 @@ from .verdict import check
 
 MEDIA_EXTS = {".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus",
               ".mp4", ".mov", ".mkv", ".mka", ".webm", ".mxf", ".ts", ".aiff"}
+
+
+def tool_schema() -> str:
+    """The machine-readable tool definition, shipped inside the package
+    (the repo-root tool.json is a synced copy for agents browsing GitHub)."""
+    return importlib.resources.files("loudcheck").joinpath(
+        "tool.json").read_text(encoding="utf-8")
 
 
 def human(result: dict) -> str:
@@ -73,8 +81,11 @@ def main(argv=None) -> int:
         prog="loudcheck",
         description="Loudness compliance verdict against formal published "
                     "standards (EBU R128, ATSC A/85, BS.1770 measure-only).")
-    p.add_argument("files", nargs="+",
+    p.add_argument("files", nargs="*",
                    help="media file(s) or a directory (batch mode)")
+    p.add_argument("--schema", action="store_true",
+                   help="print the machine-readable tool definition "
+                        "(tool.json) and exit")
     p.add_argument("--standard", default="EBU_R128",
                    choices=sorted(STANDARDS),
                    help="standard to verdict against (default: EBU_R128)")
@@ -87,6 +98,12 @@ def main(argv=None) -> int:
     p.add_argument("--json", action="store_true",
                    help="emit the full verdict JSON")
     args = p.parse_args(argv)
+
+    if args.schema:
+        print(tool_schema())
+        return 0
+    if not args.files:
+        p.error("files required (or --schema)")
 
     targets = expand_targets(args.files)
     if not targets:

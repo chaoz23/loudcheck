@@ -50,6 +50,7 @@ loudcheck file.mov --stream 1               # a specific audio track
 loudcheck file.wav --detailed               # + max momentary / short-term
 loudcheck masters/ --standard EBU_R128      # batch a directory -> table
 loudcheck a.wav b.wav c.wav                 # batch multiple files
+loudcheck --schema                          # print the tool definition
 ```
 
 Batch mode prints one line per file (plus remediation for fails) and a
@@ -72,7 +73,9 @@ fails.
   `check_loudness(path, standard)` → same JSON as the CLI, and
   `list_standards()` → the catalog with citations. Verified against
   `mcp==1.28.1`.
-- **`tool.json`** at the repo root describes the surface machine-readably.
+- **`tool.json`** at the repo root describes the surface machine-readably —
+  or fetch it live from any install with `loudcheck --schema` (the file ships
+  inside the package; a test keeps the two copies in sync).
 - **ffmpeg version is part of the contract:** every verdict includes
   `measurement_context.ffmpeg_version`. Minimum supported: 5.0. Developed and
   verified against 8.1.

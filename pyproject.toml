@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loudcheck"
-version = "0.2.0"
+version = "0.3.0"
 description = "Loudness compliance verdicts against formal published standards (EBU R128, ATSC A/85) — a pass/fail answer with exact deltas, not raw meter output."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -26,6 +26,9 @@ Issues = "https://github.com/chaoz23/loudcheck/issues"
 
 [tool.setuptools.packages.find]
 include = ["loudcheck*"]
+
+[tool.setuptools.package-data]
+loudcheck = ["tool.json"]
 
 [tool.pytest.ini_options]
 addopts = "-v"

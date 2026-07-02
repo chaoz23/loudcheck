@@ -45,6 +45,30 @@ STANDARDS = {
             },
         },
     },
+    "BS_1770": {
+        # Measure-only base mode: ITU-R BS.1770 defines the MEASUREMENT
+        # algorithm (K-weighted loudness, true peak, gating) but sets no
+        # compliance target — so this entry gates nothing and the verdict is
+        # "measured", not pass/fail. This is deliberately NOT a place to
+        # invent targets; see the scope guardrail.
+        "name": "ITU-R BS.1770 (measurement only)",
+        "citation": "ITU-R BS.1770-5 (https://www.itu.int/rec/R-REC-BS.1770)",
+        "unit": "LUFS",
+        "metrics": {
+            "integrated": {
+                "gated": False,
+                "citation": "BS.1770 defines measurement; no compliance target exists in the spec",
+            },
+            "true_peak": {
+                "gated": False,
+                "citation": "BS.1770 Annex 2 defines true-peak measurement; no limit exists in the spec",
+            },
+            "lra": {
+                "gated": False,
+                "citation": "LRA per EBU Tech 3342; informational",
+            },
+        },
+    },
     "ATSC_A85": {
         "name": "ATSC A/85:2013",
         "citation": "ATSC A/85:2013 (https://www.atsc.org/atsc-documents/a85-techniques-for-establishing-and-maintaining-audio-loudness-for-digital-television/)",

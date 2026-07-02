@@ -16,7 +16,8 @@ mcp = FastMCP("loudcheck")
 
 
 @mcp.tool()
-def check_loudness(path: str, standard: str = "EBU_R128") -> dict:
+def check_loudness(path: str, standard: str = "EBU_R128",
+                   stream: int = 0, detailed: bool = False) -> dict:
     """
     Loudness compliance verdict for a media file against a formal published
     standard. Measures integrated loudness, loudness range, and true peak
@@ -25,19 +26,24 @@ def check_loudness(path: str, standard: str = "EBU_R128") -> dict:
 
     Args:
         path: media file to check (any format ffmpeg can read).
-        standard: EBU_R128 (broadcast, -23 LUFS) or ATSC_A85 (US TV,
-            -24 LKFS). Default EBU_R128.
+        standard: EBU_R128 (broadcast, -23 LUFS), ATSC_A85 (US TV, -24 LKFS),
+            or BS_1770 (measurement only — verdict "measured", no gates).
+        stream: zero-based audio stream index for multi-track files.
+        detailed: also report max momentary / max short-term loudness
+            (one extra ffmpeg pass).
 
     Returns:
-        dict with: verdict (pass|fail), per-metric measured/target/delta and
-        pass booleans, failures (plain-English causes), remediation (exact
-        corrections, e.g. "apply -2.3 LU gain"), and measurement_context
-        (ffmpeg version, stream info).
+        dict with: verdict (pass|fail|measured), per-metric
+        measured/target/delta and pass booleans, failures (plain-English
+        causes), remediation (exact corrections, e.g. "apply -2.3 LU gain"),
+        and measurement_context (ffmpeg version, stream info).
     """
     try:
-        return check(measure(path), standard)
+        result = check(measure(path, stream=stream, detailed=detailed), standard)
+        result["file"] = path  # echoed for batch-calling agents; matches CLI JSON
+        return result
     except (AnalysisError, ValueError) as e:
-        return {"verdict": "error", "error": str(e)}
+        return {"verdict": "error", "error": str(e), "file": path}
 
 
 @mcp.tool()

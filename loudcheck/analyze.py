@@ -39,6 +39,9 @@ class Measurement:
     channels: Optional[int]
     duration_seconds: Optional[float]
     ffmpeg_version: str
+    stream_index: int = 0
+    max_momentary: Optional[float] = None    # LUFS, 400 ms window (--detailed)
+    max_short_term: Optional[float] = None   # LUFS, 3 s window (--detailed)
 
 
 def _ffmpeg_path() -> str:
@@ -70,6 +73,7 @@ def _probe(path: str, ffmpeg: str) -> dict:
     if "Invalid data found" in err:
         raise AnalysisError(f"Error: unreadable or unsupported file: {path}")
     info: dict = {"has_audio": "Stream" in err and "Audio:" in err}
+    info["audio_streams"] = len(re.findall(r"Stream #\d+:\d+.*?: Audio:", err))
     m = re.search(r"Audio:.*?(\d+) Hz.*?(mono|stereo|(\d+)(?:\.\d+)? channels)", err)
     if m:
         info["sample_rate"] = int(m.group(1))
@@ -83,8 +87,33 @@ def _probe(path: str, ffmpeg: str) -> dict:
     return info
 
 
-def measure(path: str) -> Measurement:
-    """Measure integrated loudness, LRA, and true peak of a file's audio."""
+def audio_stream_count(path: str) -> int:
+    """Number of audio streams in the file (0 if none)."""
+    return _probe(path, _ffmpeg_path()).get("audio_streams", 0)
+
+
+def _detailed_pass(ffmpeg: str, path: str, stream: int) -> tuple[float, float]:
+    """Second pass with ebur128 to extract max momentary / max short-term.
+    The filter logs M/S every 100 ms; we take the maxima."""
+    r = subprocess.run(
+        [ffmpeg, "-hide_banner", "-nostats", "-i", path,
+         "-map", f"0:a:{stream}",
+         "-af", "ebur128=peak=true", "-f", "null", "-"],
+        capture_output=True, text=True)
+    momentary = [float(m) for m in re.findall(r"M:\s*(-?[\d.]+)", r.stderr)]
+    short_term = [float(s) for s in re.findall(r"S:\s*(-?[\d.]+)", r.stderr)]
+    if not momentary or not short_term:
+        raise AnalysisError(
+            "Error: ebur128 produced no momentary/short-term readings")
+    return max(momentary), max(short_term)
+
+
+def measure(path: str, stream: int = 0, detailed: bool = False) -> Measurement:
+    """Measure integrated loudness, LRA, and true peak of one audio stream.
+
+    stream: zero-based audio stream index (0:a:N).
+    detailed: also run an ebur128 pass for max momentary / max short-term.
+    """
     ffmpeg = _ffmpeg_path()
 
     version = ffmpeg_version(ffmpeg)
@@ -98,10 +127,15 @@ def measure(path: str) -> Measurement:
     info = _probe(path, ffmpeg)
     if not info.get("has_audio"):
         raise AnalysisError("Error: no audio stream found")
+    n_streams = info.get("audio_streams", 1)
+    if stream >= n_streams:
+        raise AnalysisError(
+            f"Error: audio stream {stream} not found "
+            f"(file has {n_streams} audio stream(s))")
 
     r = subprocess.run(
         [ffmpeg, "-hide_banner", "-nostats", "-i", path,
-         "-map", "0:a:0",
+         "-map", f"0:a:{stream}",
          "-af", "loudnorm=print_format=json",
          "-f", "null", "-"],
         capture_output=True, text=True)
@@ -121,6 +155,10 @@ def measure(path: str) -> Measurement:
                 "too-short audio?)")
         return float(v)
 
+    max_m = max_s = None
+    if detailed:
+        max_m, max_s = _detailed_pass(ffmpeg, path, stream)
+
     return Measurement(
         integrated=f("input_i"),
         lra=f("input_lra"),
@@ -130,4 +168,7 @@ def measure(path: str) -> Measurement:
         channels=info.get("channels"),
         duration_seconds=info.get("duration"),
         ffmpeg_version=version,
+        stream_index=stream,
+        max_momentary=max_m,
+        max_short_term=max_s,
     )

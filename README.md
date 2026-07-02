@@ -6,6 +6,8 @@ a media file with ffmpeg and answers the question that actually matters —
 
 - **EBU R 128** (European broadcast: −23.0 LUFS ±0.5 LU, max −1 dBTP)
 - **ATSC A/85** (US television: −24 LKFS ±2 dB, true peak below −2 dBTP)
+- **BS.1770** (measure-only: BS.1770 defines no compliance target, so this
+  mode returns verdict `measured` with the numbers and no judgment)
 
 ```
 $ loudcheck master.wav --standard EBU_R128
@@ -42,7 +44,17 @@ pip install -e ".[dev]"     # + pytest
 loudcheck file.wav                          # EBU R128 by default
 loudcheck file.mp4 --standard ATSC_A85      # first audio stream of a video
 loudcheck file.wav --json                   # full structured verdict
+loudcheck file.wav --standard BS_1770       # measurement only, no gates
+loudcheck file.mov --all-streams            # verdict every audio track
+loudcheck file.mov --stream 1               # a specific audio track
+loudcheck file.wav --detailed               # + max momentary / short-term
+loudcheck masters/ --standard EBU_R128      # batch a directory -> table
+loudcheck a.wav b.wav c.wav                 # batch multiple files
 ```
+
+Batch mode prints one line per file (plus remediation for fails) and a
+summary; `--json` in batch emits an array. Exit code is `1` if *any* file
+fails.
 
 ## For agents
 

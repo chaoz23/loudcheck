@@ -180,6 +180,81 @@ def test_cli_json_and_mcp_identical(corpus, capsys):
     assert cli_json == mcp_json  # one engine, byte-identical verdicts
 
 
+# ---------------------------------------------------------------------------
+# v0.2: BS.1770 measure-only, detailed metrics, per-stream, batch
+# ---------------------------------------------------------------------------
+
+def test_bs1770_measured_mode(corpus, capsys):
+    """A gate-free standard yields verdict 'measured' and exit 0 — even for
+    audio that would fail every compliance standard."""
+    v = check(measure(corpus["loud"]), "BS_1770")
+    assert v["verdict"] == "measured"
+    assert not v["failures"] and not v["remediation"]
+    assert v["metrics"]["integrated"]["informational"]
+    assert cli_main([corpus["loud"], "--standard", "BS_1770"]) == 0
+    capsys.readouterr()
+
+
+def test_detailed_metrics(corpus):
+    """--detailed adds max momentary/short-term; for a steady tone both sit
+    within ~1 LU of integrated."""
+    m = measure(corpus["r128_ok"], detailed=True)
+    assert m.max_momentary is not None and m.max_short_term is not None
+    assert abs(m.max_short_term - m.integrated) < 1.5, m
+    v = check(m, "EBU_R128")
+    assert "max_short_term" in v["metrics"]
+    assert v["metrics"]["max_short_term"]["informational"]
+
+
+@pytest.fixture(scope="session")
+def multitrack(tmp_path_factory, corpus):
+    """A .mov with two audio streams: a:0 at -23 LUFS (R128 pass) and
+    a:1 at -18 LUFS (R128 fail)."""
+    d = tmp_path_factory.mktemp("multi")
+    path = d / "two_tracks.mov"
+    subprocess.run(
+        ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+         "-i", corpus["r128_ok"], "-i", corpus["loud"],
+         "-map", "0:a", "-map", "1:a", "-c:a", "pcm_s16le", str(path)],
+        check=True)
+    return str(path)
+
+
+def test_per_stream(multitrack):
+    v0 = check(measure(multitrack, stream=0), "EBU_R128")
+    v1 = check(measure(multitrack, stream=1), "EBU_R128")
+    assert v0["verdict"] == "pass"
+    assert v1["verdict"] == "fail"
+    assert v1["measurement_context"]["audio_stream"] == 1
+    with pytest.raises(AnalysisError, match="stream 2 not found"):
+        measure(multitrack, stream=2)
+
+
+def test_all_streams_cli(multitrack, capsys):
+    rc = cli_main([multitrack, "--all-streams", "--standard", "EBU_R128"])
+    out = capsys.readouterr().out
+    assert rc == 1  # one stream fails
+    assert "[a:0]" in out and "[a:1]" in out
+    assert "1 pass, 1 fail" in out
+
+
+def test_batch_mode(corpus, capsys):
+    rc = cli_main([corpus["r128_ok"], corpus["loud"],
+                   "--standard", "EBU_R128"])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "PASS" in out and "FAIL" in out
+    assert "2 checked, 1 pass, 1 fail" in out
+
+
+def test_batch_json_is_array(corpus, capsys):
+    cli_main([corpus["r128_ok"], corpus["a85_ok"],
+              "--standard", "ATSC_A85", "--json"])
+    data = json.loads(capsys.readouterr().out)
+    assert isinstance(data, list) and len(data) == 2
+    assert all("file" in r for r in data)
+
+
 def test_standards_catalog_is_pure_data():
     """Guardrail: the catalog stays data-only, every gated metric cited."""
     for std in STANDARDS.values():

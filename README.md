@@ -21,6 +21,8 @@ FAIL — EBU R 128
 Ships as a CLI and an MCP tool over one engine, so agents and humans get the
 identical verdict.
 
+![loudcheck demo: FAIL with exact fix, apply it, PASS, exit code carries the verdict](demo.gif)
+
 ## Why this exists
 
 An agent (or an engineer) can run ffmpeg's `ebur128` filter and get numbers.
@@ -33,10 +35,12 @@ the standards-aware answer. That's the whole tool.
 ## Install
 
 ```bash
-pip install -e .            # CLI (requires ffmpeg >= 5.0 on PATH)
-pip install -e ".[mcp]"     # + MCP server
-pip install -e ".[dev]"     # + pytest
+uvx loudcheck file.wav          # zero-install run (requires ffmpeg >= 5.0 on PATH)
+pip install loudcheck           # CLI
+pip install "loudcheck[mcp]"    # + MCP server
 ```
+
+From a clone: `pip install -e ".[mcp,dev]"`.
 
 ## CLI
 

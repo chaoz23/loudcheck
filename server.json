@@ -1,0 +1,39 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.chaoz23/loudcheck",
+  "title": "loudcheck",
+  "description": "Loudness compliance verdicts against formal broadcast standards (EBU R128, ATSC A/85): pass/fail with per-metric deltas, spec citations, and exact ffmpeg remediation. Requires ffmpeg >= 5 on PATH.",
+  "repository": {
+    "url": "https://github.com/chaoz23/loudcheck",
+    "source": "github"
+  },
+  "version": "0.3.1",
+  "websiteUrl": "https://github.com/chaoz23/loudcheck",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "loudcheck",
+      "version": "0.3.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--from",
+          "value": "loudcheck[mcp]==0.3.1",
+          "isRequired": true,
+          "description": "install the MCP extra (the core package is dependency-free)"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "--mcp",
+          "description": "run the MCP stdio server instead of the CLI"
+        }
+      ]
+    }
+  ]
+}

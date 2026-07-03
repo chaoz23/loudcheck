@@ -21,7 +21,7 @@
     "errors": "Error:-prefixed text on stderr, never a traceback"
   },
   "mcp": {
-    "server": "python -m loudcheck.mcp_server",
+    "server": "loudcheck-mcp (or: loudcheck --mcp, or: python -m loudcheck.mcp_server; zero-install: uvx --from 'loudcheck[mcp]' loudcheck --mcp)",
     "transport": "stdio",
     "tools": [
       "check_loudness(path, standard='EBU_R128') -> verdict dict (identical to CLI --json)",

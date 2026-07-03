@@ -86,6 +86,9 @@ def main(argv=None) -> int:
     p.add_argument("--schema", action="store_true",
                    help="print the machine-readable tool definition "
                         "(tool.json) and exit")
+    p.add_argument("--mcp", action="store_true",
+                   help="run as an MCP stdio server "
+                        "(requires the [mcp] extra)")
     p.add_argument("--standard", default="EBU_R128",
                    choices=sorted(STANDARDS),
                    help="standard to verdict against (default: EBU_R128)")
@@ -101,6 +104,10 @@ def main(argv=None) -> int:
 
     if args.schema:
         print(tool_schema())
+        return 0
+    if args.mcp:
+        from .mcp_server import main as mcp_main  # exits 2 if extra missing
+        mcp_main()
         return 0
     if not args.files:
         p.error("files required (or --schema)")

@@ -2,11 +2,21 @@
 MCP surface — thin wrapper over the same engine the CLI uses (P0.6).
 
 Register as a stdio MCP server:
+    loudcheck-mcp            (console script, needs the [mcp] extra)
     python -m loudcheck.mcp_server
 Import path verified against mcp==1.28.1.
 """
 
-from mcp.server.fastmcp import FastMCP
+import sys
+
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    # agent contract: Error:-prefixed text on stderr, never a traceback
+    sys.stderr.write(
+        "Error: MCP support not installed — pip install 'loudcheck[mcp]' "
+        "(or: uvx --from 'loudcheck[mcp]' loudcheck-mcp)\n")
+    sys.exit(2)
 
 from .analyze import AnalysisError, measure
 from .standards import STANDARDS
@@ -53,5 +63,9 @@ def list_standards() -> dict:
     return {"standards": STANDARDS}
 
 
-if __name__ == "__main__":
+def main() -> None:
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

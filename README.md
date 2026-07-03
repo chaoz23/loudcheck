@@ -73,7 +73,9 @@ fails.
   −2.3 LU gain and hands you the ffmpeg incantation. This tool never applies
   the fix (measurement and verdict only); the agent one-shots it with
   `loudnorm` using the delta provided.
-- **MCP:** register `python -m loudcheck.mcp_server` (stdio). Tools:
+- **MCP:** register `loudcheck-mcp` (stdio; or `loudcheck --mcp`, or
+  `python -m loudcheck.mcp_server`). Zero-install:
+  `uvx --from 'loudcheck[mcp]' loudcheck --mcp`. Tools:
   `check_loudness(path, standard)` → same JSON as the CLI, and
   `list_standards()` → the catalog with citations. Verified against
   `mcp==1.28.1`.
@@ -125,3 +127,5 @@ platform delivery templates (see guardrail).
 ## License
 
 MIT
+
+<!-- mcp-name: io.github.chaoz23/loudcheck -->

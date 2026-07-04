@@ -34,6 +34,8 @@ the standards-aware answer. That's the whole tool.
 
 ## Install
 
+Requires Python 3.10+ and ffmpeg 5.0+ on `PATH`.
+
 ```bash
 uvx loudcheck file.wav          # zero-install run (requires ffmpeg >= 5.0 on PATH)
 pip install loudcheck           # CLI

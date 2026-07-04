@@ -72,14 +72,38 @@ def _probe(path: str, ffmpeg: str) -> dict:
         raise AnalysisError(f"Error: file not found: {path}")
     if "Invalid data found" in err:
         raise AnalysisError(f"Error: unreadable or unsupported file: {path}")
-    info: dict = {"has_audio": "Stream" in err and "Audio:" in err}
-    info["audio_streams"] = len(re.findall(r"Stream #\d+:\d+.*?: Audio:", err))
-    m = re.search(r"Audio:.*?(\d+) Hz.*?(mono|stereo|(\d+)(?:\.\d+)? channels)", err)
-    if m:
-        info["sample_rate"] = int(m.group(1))
-        ch = m.group(2)
-        info["channels"] = 1 if ch == "mono" else 2 if ch == "stereo" \
-            else int(m.group(3) or 0)
+    audio_lines = [
+        line for line in err.splitlines()
+        if re.search(r"Stream #\d+:\d+.*?: Audio:", line)
+    ]
+    stream_info = []
+    for line in audio_lines:
+        sample_rate = re.search(r"Audio:.*?(\d+) Hz", line)
+        channel_layout = re.search(r"\d+ Hz,\s*([^,]+)", line)
+        channels = None
+        if channel_layout:
+            layout = channel_layout.group(1).strip()
+            if layout == "mono":
+                channels = 1
+            elif layout == "stereo":
+                channels = 2
+            else:
+                count = re.match(r"(\d+) channels?", layout)
+                surround = re.match(r"(\d+)\.(\d+)(?:\([^)]*\))?$", layout)
+                if count:
+                    channels = int(count.group(1))
+                elif surround:
+                    channels = int(surround.group(1)) + int(surround.group(2))
+        stream_info.append({
+            "sample_rate": int(sample_rate.group(1)) if sample_rate else None,
+            "channels": channels,
+        })
+
+    info: dict = {
+        "has_audio": bool(audio_lines),
+        "audio_streams": len(audio_lines),
+        "audio_stream_info": stream_info,
+    }
     d = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", err)
     if d:
         h, mi, s = int(d.group(1)), int(d.group(2)), float(d.group(3))
@@ -114,6 +138,10 @@ def measure(path: str, stream: int = 0, detailed: bool = False) -> Measurement:
     stream: zero-based audio stream index (0:a:N).
     detailed: also run an ebur128 pass for max momentary / max short-term.
     """
+    if stream < 0:
+        raise AnalysisError(
+            f"Error: audio stream index must be non-negative (got {stream})")
+
     ffmpeg = _ffmpeg_path()
 
     version = ffmpeg_version(ffmpeg)
@@ -159,13 +187,14 @@ def measure(path: str, stream: int = 0, detailed: bool = False) -> Measurement:
     if detailed:
         max_m, max_s = _detailed_pass(ffmpeg, path, stream)
 
+    selected_info = info["audio_stream_info"][stream]
     return Measurement(
         integrated=f("input_i"),
         lra=f("input_lra"),
         true_peak=f("input_tp"),
         threshold=f("input_thresh"),
-        sample_rate=info.get("sample_rate"),
-        channels=info.get("channels"),
+        sample_rate=selected_info.get("sample_rate"),
+        channels=selected_info.get("channels"),
         duration_seconds=info.get("duration"),
         ffmpeg_version=version,
         stream_index=stream,

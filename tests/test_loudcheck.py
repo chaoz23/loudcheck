@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from loudcheck import STANDARDS, check, measure
+from loudcheck import Measurement, STANDARDS, check, measure
 from loudcheck.analyze import AnalysisError
 from loudcheck.cli import main as cli_main
 
@@ -42,7 +42,8 @@ SINE_LUFS_BELOW_PEAK = 3.01
 SINE_SOURCE_DBFS = -18.06     # ffmpeg sine source amplitude is 1/8
 
 
-def gen_tone(path, target_lufs=None, target_tp=None, seconds=8, freq=997):
+def gen_tone(path, target_lufs=None, target_tp=None, seconds=8, freq=997,
+             sample_rate=48000, channels=1):
     """Mono 997 Hz sine calibrated to a target integrated LUFS (or peak dBTP)."""
     if target_tp is not None:
         peak_dbfs = target_tp
@@ -52,9 +53,9 @@ def gen_tone(path, target_lufs=None, target_tp=None, seconds=8, freq=997):
     subprocess.run(
         ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
          "-f", "lavfi", "-i",
-         f"sine=frequency={freq}:duration={seconds}:sample_rate=48000",
+         f"sine=frequency={freq}:duration={seconds}:sample_rate={sample_rate}",
          "-af", f"volume={vol_db:.3f}dB",
-         "-c:a", "pcm_s16le", str(path)],
+         "-ac", str(channels), "-c:a", "pcm_s16le", str(path)],
         check=True)
     return str(path)
 
@@ -142,6 +143,19 @@ def test_true_peak_fail(corpus):
     assert any("limiter" in r or "reduce peaks" in r for r in v["remediation"])
 
 
+def test_positive_gain_remediation_respects_true_peak_headroom():
+    """Never recommend simple gain when it would create a peak violation."""
+    measurement = Measurement(
+        integrated=-30.0, lra=5.0, true_peak=-1.5, threshold=-40.0,
+        sample_rate=48000, channels=2, duration_seconds=10.0,
+        ffmpeg_version="test")
+    v = check(measurement, "EBU_R128")
+    remediation = " ".join(v["remediation"])
+    assert "simple gain would project true peak to 5.5 dBTP" in remediation
+    assert "loudnorm I=-23:TP=-1" in remediation
+    assert "volume=7.0dB" not in remediation
+
+
 # ---------------------------------------------------------------------------
 # Errors (P0.5)
 # ---------------------------------------------------------------------------
@@ -154,6 +168,11 @@ def test_no_audio_stream(corpus):
 def test_missing_file():
     with pytest.raises(AnalysisError, match=r"^Error: file not found"):
         measure("/nonexistent/file.wav")
+
+
+def test_negative_stream_is_rejected_before_ffmpeg(corpus):
+    with pytest.raises(AnalysisError, match="stream index must be non-negative"):
+        measure(corpus["r128_ok"], stream=-1)
 
 
 def test_unknown_standard(corpus):
@@ -213,9 +232,12 @@ def multitrack(tmp_path_factory, corpus):
     a:1 at -18 LUFS (R128 fail)."""
     d = tmp_path_factory.mktemp("multi")
     path = d / "two_tracks.mov"
+    alternate = gen_tone(
+        d / "alternate.wav", target_lufs=-18.0,
+        sample_rate=44100, channels=2)
     subprocess.run(
         ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-         "-i", corpus["r128_ok"], "-i", corpus["loud"],
+         "-i", corpus["r128_ok"], "-i", alternate,
          "-map", "0:a", "-map", "1:a", "-c:a", "pcm_s16le", str(path)],
         check=True)
     return str(path)
@@ -227,6 +249,10 @@ def test_per_stream(multitrack):
     assert v0["verdict"] == "pass"
     assert v1["verdict"] == "fail"
     assert v1["measurement_context"]["audio_stream"] == 1
+    assert v0["measurement_context"]["sample_rate"] == 48000
+    assert v0["measurement_context"]["channels"] == 1
+    assert v1["measurement_context"]["sample_rate"] == 44100
+    assert v1["measurement_context"]["channels"] == 2
     with pytest.raises(AnalysisError, match="stream 2 not found"):
         measure(multitrack, stream=2)
 

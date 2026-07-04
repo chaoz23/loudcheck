@@ -49,13 +49,27 @@ def check(measurement: Measurement, standard: str) -> dict[str, Any]:
         entry["pass"] = integ_pass
         if not integ_pass:
             direction = "over" if delta > 0 else "under"
+            gain = -delta
             failures.append(
                 f"integrated loudness {measurement.integrated:.1f} {unit} is "
                 f"{abs(delta):.1f} LU {direction} target {integ['target']:.1f}")
-            remediation.append(
-                f"apply {-delta:+.1f} LU gain to reach {integ['target']:.1f} "
-                f"{unit} (e.g. ffmpeg -af volume={-delta:.1f}dB, or loudnorm "
-                f"I={integ['target']:.0f})")
+            tp = spec["metrics"]["true_peak"]
+            projected_peak = measurement.true_peak + gain
+            if (gain > 0 and tp["gated"] and
+                    projected_peak > tp["max"]):
+                remediation.append(
+                    f"raise integrated loudness by {gain:+.1f} LU to reach "
+                    f"{integ['target']:.1f} {unit}; simple gain would project "
+                    f"true peak to {projected_peak:.1f} dBTP, above the "
+                    f"{tp['max']:.1f} dBTP limit — use loudnorm "
+                    f"I={integ['target']:.0f}:TP={tp['max']:.0f} (or gain plus "
+                    "a true-peak limiter), then re-measure")
+            else:
+                remediation.append(
+                    f"apply {gain:+.1f} LU gain to reach "
+                    f"{integ['target']:.1f} {unit} (e.g. ffmpeg -af "
+                    f"volume={gain:.1f}dB, or loudnorm "
+                    f"I={integ['target']:.0f})")
     else:
         entry["pass"] = True
         entry["informational"] = True

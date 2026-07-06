@@ -9,7 +9,7 @@ description = "Loudness compliance verdicts against formal published standards (
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "chaoz23", email = "chaoz23@gmail.com" }]
+authors = [{ name = "Daniel Strader (chaoz23)", email = "chaoz23@gmail.com" }]
 keywords = ["loudness", "ebu-r128", "atsc-a85", "lufs", "true-peak", "ffmpeg", "compliance", "mcp", "agents", "broadcast"]
 dependencies = []
 

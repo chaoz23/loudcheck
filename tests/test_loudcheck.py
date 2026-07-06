@@ -31,6 +31,15 @@ from loudcheck import Measurement, STANDARDS, check, measure
 from loudcheck.analyze import AnalysisError
 from loudcheck.cli import main as cli_main
 
+import shutil as _shutil
+
+# The verification corpus is generated on the fly with ffmpeg's lavfi
+# sources, so the whole module is unrunnable without ffmpeg on PATH.
+# Skip cleanly rather than erroring every test when it is absent.
+if _shutil.which("ffmpeg") is None:
+    pytest.skip("ffmpeg not installed; loudcheck's test corpus is generated with ffmpeg",
+                allow_module_level=True)
+
 TOL = 1.0  # LU agreement demanded between generated level and measurement
 
 

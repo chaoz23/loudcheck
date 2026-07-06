@@ -191,6 +191,12 @@ def test_cli_exit_codes(corpus, capsys):
     capsys.readouterr()
 
 
+def test_cli_unstatable_path_exits_cleanly(capsys):
+    # ENAMETOOLONG must produce Error: + exit 2, never a traceback
+    assert cli_main(["x" * 5000]) == 2
+    assert capsys.readouterr().err.startswith("Error:")
+
+
 def test_cli_json_and_mcp_identical(corpus, capsys):
     cli_main([corpus["loud"], "--standard", "EBU_R128", "--json"])
     cli_json = json.loads(capsys.readouterr().out)

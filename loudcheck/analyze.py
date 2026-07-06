@@ -70,6 +70,8 @@ def _probe(path: str, ffmpeg: str) -> dict:
     err = r.stderr
     if "No such file or directory" in err:
         raise AnalysisError(f"Error: file not found: {path}")
+    if "File name too long" in err:
+        raise AnalysisError(f"Error: file name too long: {path[:120]}…")
     if "Invalid data found" in err:
         raise AnalysisError(f"Error: unreadable or unsupported file: {path}")
     audio_lines = [

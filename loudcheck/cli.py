@@ -67,7 +67,14 @@ def expand_targets(paths: list[str]) -> list[str]:
     out: list[str] = []
     for p in paths:
         pp = Path(p)
-        if pp.is_dir():
+        try:
+            is_dir = pp.is_dir()
+        except OSError:
+            # e.g. ENAMETOOLONG — not statable; pass through as a plain
+            # target so analysis rejects it with a clean exit-2 error
+            out.append(p)
+            continue
+        if is_dir:
             out.extend(sorted(
                 str(f) for f in pp.iterdir()
                 if f.suffix.lower() in MEDIA_EXTS and f.is_file()))
